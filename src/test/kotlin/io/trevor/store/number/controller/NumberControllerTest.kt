@@ -1,5 +1,6 @@
 package io.trevor.store.number.controller;
 
+import io.trevor.store.fixture.Generators.randomInt
 import io.trevor.store.number.dto.CreateNumberDto
 import io.trevor.store.number.dto.ResponseNumberDto
 import org.assertj.core.api.Assertions.assertThat
@@ -20,9 +21,9 @@ class NumberControllerTest(@Autowired val restTemplate: TestRestTemplate) {
 
     @Test
     fun `numbers returns empty list`() {
-        val entity = restTemplate.getForEntity<List<ResponseNumberDto>>("/numbers")
-        assertThat(entity.statusCode).isEqualTo(HttpStatus.OK)
-        assertThat(entity.body).isEmpty()
+        val response = restTemplate.getForEntity<List<ResponseNumberDto>>("/numbers")
+        assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+        assertThat(response.body).isEmpty()
     }
 
     @Test
@@ -39,16 +40,16 @@ class NumberControllerTest(@Autowired val restTemplate: TestRestTemplate) {
     fun `number with is returned by id after create it`() {
         val value = randomInt()
         val request = CreateNumberDto(value)
-        val postResponse = restTemplate.postForEntity<String>("/numbers", request)
+        val postResponse = restTemplate.postForEntity<ResponseNumberDto>("/numbers", request)
 
         assertThat(postResponse.statusCode).isEqualTo(HttpStatus.CREATED)
-        assertThat(postResponse.body).isNotBlank
+        assertThat(postResponse.body).isNotNull
 
-        postResponse.body?.let { id ->
-            restTemplate.getForEntity<ResponseNumberDto>("/numbers/{0}", id).also { getResponse ->
+        postResponse.body?.let { data ->
+            restTemplate.getForEntity<ResponseNumberDto>("/numbers/{0}", data.id).also { getResponse ->
                 assertThat(getResponse).isNotNull
                 assertThat(getResponse.statusCode).isEqualTo(HttpStatus.OK)
-                assertThat(getResponse.body).isEqualTo(ResponseNumberDto(id, value))
+                assertThat(getResponse.body).isEqualTo(ResponseNumberDto(data.id, value))
             }
         } ?: fail { "I don't know how do we get here" }
 
@@ -59,16 +60,14 @@ class NumberControllerTest(@Autowired val restTemplate: TestRestTemplate) {
         val r =
             (1..10)
                 .map {  CreateNumberDto(randomInt()) }
-                .map { restTemplate.postForEntity<String>("/numbers", it) }
+                .map { restTemplate.postForEntity<ResponseNumberDto>("/numbers", it) }
                 .map { it.body }
 
         assertThat(r).hasSize(10)
 
-        val entity = restTemplate.getForEntity<List<ResponseNumberDto>>("/numbers")
-        assertThat(entity.statusCode).isEqualTo(HttpStatus.OK)
-        assertThat(entity.body).hasSize(10)
+        val response = restTemplate.getForEntity<List<ResponseNumberDto>>("/numbers")
+        assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
+        assertThat(response.body).hasSize(10)
     }
-
-    private fun randomInt(): Int = (Int.MIN_VALUE..Int.MAX_VALUE).random()
 
 }
